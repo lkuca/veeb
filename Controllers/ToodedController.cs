@@ -6,6 +6,7 @@ namespace veeb.Controllers
 {
     [Route("[controller]")]
     [ApiController]
+
     public class ToodedController : ControllerBase
     {
         private static List<Toode> _tooted = new()
@@ -85,6 +86,16 @@ namespace veeb.Controllers
             }
 
             return _tooted;
+        }
+        [HttpPut("muuda/{id}/{nimi}/{hind}/{aktiivne}")]
+        public void Update(int id, string nimi, double hind, bool aktiivne)
+        {
+            var olemasolevToode = _tooted.FirstOrDefault(t => t.Id == id);
+            
+            olemasolevToode.Name = nimi;
+            olemasolevToode.Price = hind;
+            olemasolevToode.IsActive = aktiivne;
+
         }
         // GET: /tooted/kustutakoik
         [HttpGet("kustutuakoik")]
