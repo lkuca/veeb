@@ -8,6 +8,7 @@
         public string Eesnimi { get; set; }
         public string Perenimi { get; set; }
 
+        public ICollection<Toode> Tooded { get; set; } = new List<Toode>();
         public Kasutaja(int id, string kasutajanimi, string parool, string eesnimi, string perenimi)
         {
             Id = id;

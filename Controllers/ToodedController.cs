@@ -1,145 +1,109 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using veeb.Data;
 using veeb.Models;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace veeb.Controllers
 {
-    [Route("[controller]")]
     [ApiController]
-
+    [Route("[controller]")]
     public class ToodedController : ControllerBase
     {
-        private static List<Toode> _tooted = new()
-        {
-            new Toode(1,"Koola", 1.5, true),
-            new Toode(2,"Fanta", 1.0, false),
-            new Toode(3,"Sprite", 1.7, true),
-            new Toode(4,"Vichy", 2.0, true),
-            new Toode(5,"Vitamin well", 2.5, true)
-        };
+        private readonly ApplicationDbContext _dbContext;
 
-        // GET https://localhost:4444/tooted
+        public ToodedController(ApplicationDbContext dbContext)
+        {
+            _dbContext = dbContext;
+        }
+
+        // GET: /tooted
         [HttpGet]
-        public List<Toode> Get()
+        public async Task<ActionResult<List<Toode>>> Get()
         {
-            return _tooted;
+            return await _dbContext.Tooded.ToListAsync();
         }
 
-        // DELETE https://localhost:4444/tooted/kustuta/0
-        [HttpDelete("kustuta/{index}")]
-        public List<Toode> Delete(int index)
+        // DELETE: /tooted/kustuta/1
+        [HttpDelete("kustuta/{id}")]
+        public async Task<ActionResult> Delete(int id)
         {
-            _tooted.RemoveAt(index);
-            return _tooted;
+            var toode = await _dbContext.Tooded.FindAsync(id);
+            if (toode == null)
+            {
+                return NotFound("Toodet ei leitud.");
+            }
+
+            _dbContext.Tooded.Remove(toode);
+            await _dbContext.SaveChangesAsync();
+            return Ok("Toode kustutatud!");
         }
 
-        [HttpDelete("kustuta2/{index}")]
-        public string Delete2(int index)
-        {
-            _tooted.RemoveAt(index);
-            return "Kustutatud!";
-        }
-
+        // POST: /tooted/lisa
         [HttpPost("lisa")]
-        public List<Toode> Add([FromBody] Toode toode)
+        public async Task<ActionResult<List<Toode>>> Add([FromBody] Toode toode)
         {
-            _tooted.Add(toode);
-            return _tooted;
+            _dbContext.Tooded.Add(toode);
+            await _dbContext.SaveChangesAsync();
+            return await _dbContext.Tooded.ToListAsync();
         }
 
-        // POST https://localhost:4444/tooted/lisa/1/Coca/1.5/true
-        [HttpPost("lisa/{id}/{nimi}/{hind}/{aktiivne}")]
-        public List<Toode> Add(int id, string nimi, double hind, bool aktiivne)
-        {
-            Toode toode = new Toode(id, nimi, hind, aktiivne);
-            _tooted.Add(toode);
-            return _tooted;
-        }
-
-        [HttpPost("lisa2")]
-        public List<Toode> Add2(int id, string nimi, double hind, bool aktiivne)
-        {
-            Toode toode = new Toode(id, nimi, hind, aktiivne);
-            _tooted.Add(toode);
-            return _tooted;
-        }
-
-        // PATCH https://localhost:4444/tooted/hind-dollaritesse/1.5
+        // PATCH: /tooted/hind-dollaritesse/1.5
         [HttpPatch("hind-dollaritesse/{kurss}")]
-        public List<Toode> UpdatePrices(double kurss)
+        public async Task<ActionResult<List<Toode>>> UpdatePrices(double kurss)
         {
-            for (int i = 0; i < _tooted.Count; i++)
+            var tooted = await _dbContext.Tooded.ToListAsync();
+            foreach (var toode in tooted)
             {
-                _tooted[i].Price = _tooted[i].Price * kurss;
-            }
-            return _tooted;
-        }
-
-        // või foreachina:
-
-        [HttpGet("hind-dollaritesse2/{kurss}")] // GET /tooted/hind-dollaritesse2/1.5
-        public List<Toode> Dollaritesse2(double kurss)
-        {
-            foreach (var t in _tooted)
-            {
-                t.Price = t.Price * kurss;
+                toode.Price *= kurss;
             }
 
-            return _tooted;
-        }
-        [HttpPut("muuda/{id}/{nimi}/{hind}/{aktiivne}")]
-        public void Update(int id, string nimi, double hind, bool aktiivne)
-        {
-            var olemasolevToode = _tooted.FirstOrDefault(t => t.Id == id);
-            
-            olemasolevToode.Name = nimi;
-            olemasolevToode.Price = hind;
-            olemasolevToode.IsActive = aktiivne;
-
-        }
-        // GET: /tooted/kustutakoik
-        [HttpGet("kustutuakoik")]
-        public string kustutakõiktooted()
-        {
-            _tooted.Clear();
-
-            return "kõik on kustutatud";
+            _dbContext.Tooded.UpdateRange(tooted);
+            await _dbContext.SaveChangesAsync();
+            return tooted;
         }
 
-        [HttpGet("aktiivsuseväär")]
-        public List<Toode> aktiivsusväär(bool aktiivne)
+        // PUT: /tooted/muuda/1
+        [HttpPut("muuda/{id}")]
+        public async Task<ActionResult> Update(int id, [FromBody] Toode updatedToode)
         {
-            for (int i = 0; i < _tooted.Count; i++)
+            var toode = await _dbContext.Tooded.FindAsync(id);
+            if (toode == null)
             {
-                _tooted[i].IsActive = aktiivne;
+                return NotFound("Toodet ei leitud.");
             }
-            //_tooted = _tooted.Select(x =>
-            //{
-            //    x.IsActive = aktiivne;
-            //    return x;
-            //});
-            //_tooted = _tooted.ForEach(x =>
-            //{
-            //    x.IsActive = aktiivne;
-            //    return x;
-            //});
-            return _tooted;
-        }
-        [HttpGet("tootetagastamine")]
-        public Toode tootetagamine(int id) => _tooted.ElementAtOrDefault(id) ?? new Toode(-1, "The object is missing", 0, false);
 
+            toode.Name = updatedToode.Name;
+            toode.Price = updatedToode.Price;
+            toode.IsActive = updatedToode.IsActive;
+
+            _dbContext.Tooded.Update(toode);
+            await _dbContext.SaveChangesAsync();
+            return Ok("Toode uuendatud!");
+        }
+
+        // DELETE: /tooted/kustuta-koik
+        [HttpDelete("kustuta-koik")]
+        public async Task<ActionResult> DeleteAll()
+        {
+            _dbContext.Tooded.RemoveRange(await _dbContext.Tooded.ToListAsync());
+            await _dbContext.SaveChangesAsync();
+            return Ok("Kõik tooted kustutatud!");
+        }
+
+        // GET: /tooted/kalleimtoode
         [HttpGet("kalleimtoode")]
-        public Toode KalleimToode()
+        public async Task<ActionResult<Toode>> GetKalleimToode()
         {
-            if (_tooted == null || !_tooted.Any())
+            var toode = await _dbContext.Tooded.OrderByDescending(t => t.Price).FirstOrDefaultAsync();
+            if (toode == null)
             {
-                return new Toode(-1, "Tooteid pole saadaval", 0, false);
+                return NotFound("Ühtegi toodet ei leitud.");
             }
 
-            var kalleimToode = _tooted.OrderByDescending(t => t.Price).FirstOrDefault();
-            return kalleimToode ?? new Toode(-1, "Toode puudub", 0, false);
+            return toode;
         }
-
     }
 }
-

@@ -1,5 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using veeb.Data;
 using veeb.Models;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace veeb.Controllers
 {
@@ -7,65 +12,74 @@ namespace veeb.Controllers
     [Route("[controller]")]
     public class KasutajadController : ControllerBase
     {
-        private static List<Kasutaja> _kasutajad = new List<Kasutaja>{
-            new Kasutaja(1, "kasutaja1", "1234", "Eesnimi1", "Perenimi1"),
-            new Kasutaja(2, "kasutaja2", "5678", "Eesnimi2", "Perenimi2"),
-            new Kasutaja(3, "kasutaja3", "9101", "Eesnimi3", "Perenimi3")
-        };
+        private readonly ApplicationDbContext _dbContext;
 
-        [HttpGet]
-        // GET /kasutajad
-        public List<Kasutaja> Get()
+        public KasutajadController(ApplicationDbContext dbContext)
         {
-            return _kasutajad;
+            _dbContext = dbContext;
+        }
+
+        // GET /kasutajad
+        [HttpGet]
+        public async Task<ActionResult<List<Kasutaja>>> Get()
+        {
+            return await _dbContext.kasutajad.ToListAsync();
         }
 
         // GET /kasutajad/kustuta/1
-        [HttpGet("kustuta/{id}")]
-        public List<Kasutaja> Delete(int id)
+        [HttpDelete("kustuta/{id}")]
+        public async Task<ActionResult<List<Kasutaja>>> Delete(int id)
         {
-            var kasutaja = _kasutajad.FirstOrDefault(k => k.Id == id);
-            if (kasutaja != null)
+            var kasutaja = await _dbContext.kasutajad.FindAsync(id);
+            if (kasutaja == null)
             {
-                _kasutajad.Remove(kasutaja);
+                return NotFound("Kasutajat ei leitud.");
             }
-            return _kasutajad;
+
+            _dbContext.kasutajad.Remove(kasutaja);
+            await _dbContext.SaveChangesAsync();
+            return await _dbContext.kasutajad.ToListAsync();
         }
 
-        // GET /kasutajad/lisa/4/uusKasutaja/9876/Eesnimi4/Perenimi4
-        [HttpGet("lisa/{id}/{nimi}/{parool}/{eesnimi}/{perenimi}")]
-        public List<Kasutaja> Add(int id, string nimi, string parool, string eesnimi, string perenimi)
+        // POST /kasutajad/lisa
+        [HttpPost("lisa")]
+        public async Task<ActionResult<List<Kasutaja>>> Add(Kasutaja newKasutaja)
         {
-            Kasutaja kasutaja = new Kasutaja(id, nimi, parool, eesnimi, perenimi);
-            _kasutajad.Add(kasutaja);
-            return _kasutajad;
+            _dbContext.kasutajad.Add(newKasutaja);
+            await _dbContext.SaveChangesAsync();
+            return await _dbContext.kasutajad.ToListAsync();
         }
 
-        // GET /kasutajad/muuda-parooli/1/5678
-        [HttpGet("muuda-parooli/{id}/{uusParool}")]
-        public List<Kasutaja> MuudaParooli(int id, string uusParool)
+        // PUT /kasutajad/muuda-parooli/1
+        [HttpPut("muuda-parooli/{id}")]
+        public async Task<ActionResult<List<Kasutaja>>> MuudaParooli(int id, [FromBody] string uusParool)
         {
-            var kasutaja = _kasutajad.FirstOrDefault(k => k.Id == id);
-            if (kasutaja != null)
+            var kasutaja = await _dbContext.kasutajad.FindAsync(id);
+            if (kasutaja == null)
             {
-                kasutaja.Parool = uusParool;
+                return NotFound("Kasutajat ei leitud.");
             }
-            return _kasutajad;
+
+            kasutaja.Parool = uusParool;
+            _dbContext.kasutajad.Update(kasutaja);
+            await _dbContext.SaveChangesAsync();
+            return await _dbContext.kasutajad.ToListAsync();
         }
 
-        // GET /kasutajad/kustuta-koik
-        [HttpGet("kustuta-koik")]
-        public List<Kasutaja> DeleteAll()
+        // DELETE /kasutajad/kustuta-koik
+        [HttpDelete("kustuta-koik")]
+        public async Task<ActionResult<List<Kasutaja>>> DeleteAll()
         {
-            _kasutajad.Clear();
-            return _kasutajad;
+            _dbContext.kasutajad.RemoveRange(_dbContext.kasutajad);
+            await _dbContext.SaveChangesAsync();
+            return await _dbContext.kasutajad.ToListAsync();
         }
 
         // GET /kasutajad/1
         [HttpGet("{id}")]
-        public ActionResult<Kasutaja> GetKasutajaById(int id)
+        public async Task<ActionResult<Kasutaja>> GetKasutajaById(int id)
         {
-            var kasutaja = _kasutajad.FirstOrDefault(k => k.Id == id);
+            var kasutaja = await _dbContext.kasutajad.FindAsync(id);
             if (kasutaja == null)
             {
                 return NotFound("Kasutajat ei leitud.");
