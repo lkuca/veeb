@@ -16,8 +16,7 @@ namespace veeb.Controllers
             _dbContext = dbContext;
         }
 
-        // GET: kasutaja-toode/{userId}
-        // Returns user and their list of products
+        
         [HttpGet("{userId}")]
         public async Task<ActionResult> GetKasutajaWithTooded(int userId)
         {
@@ -114,6 +113,39 @@ namespace veeb.Controllers
             }));
 
             return Ok(result);
+        }
+        [HttpPost("maksa/{userId}")]
+        public async Task<ActionResult> PayForTooted(int userId, [FromBody] double summa)
+        {
+            
+            var kasutaja = await _dbContext.kasutajad
+                .Include(k => k.Tooded)
+                .FirstOrDefaultAsync(k => k.Id == userId);
+
+            if (kasutaja == null)
+            {
+                return NotFound("Користувача не знайдено.");
+            }
+
+            
+            var totalPrice = kasutaja.Tooded.Sum(t => t.Price);
+
+            // Проверить, хватает ли суммы
+            if (summa < totalPrice)
+            {
+                return BadRequest(new { message = "Недостаточно средств для оплаты." });
+            }
+
+            
+            foreach (var toode in kasutaja.Tooded)
+            {
+                toode.KasutajaId = null; 
+                _dbContext.Tooded.Update(toode);
+            }
+
+            await _dbContext.SaveChangesAsync();
+
+            return Ok(new { message = "Makstud", totalPaid = totalPrice });
         }
     }
 }

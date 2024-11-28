@@ -1,4 +1,6 @@
-﻿namespace veeb.Models
+﻿using System.Text.Json.Serialization;
+
+namespace veeb.Models
 {
     public class Kasutaja
     {
@@ -8,7 +10,9 @@
         public string Eesnimi { get; set; }
         public string Perenimi { get; set; }
 
+        [JsonIgnore] // Исключает это поле из сериализации в JSON
         public ICollection<Toode> Tooded { get; set; } = new List<Toode>();
+
         public Kasutaja(int id, string kasutajanimi, string parool, string eesnimi, string perenimi)
         {
             Id = id;

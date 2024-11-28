@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using veeb.Data;
 
@@ -11,9 +12,11 @@ using veeb.Data;
 namespace veeb.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241128131033_commitetproper")]
+    partial class commitetproper
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -74,21 +77,7 @@ namespace veeb.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("KasutajaId");
-
                     b.ToTable("Tooded");
-                });
-
-            modelBuilder.Entity("veeb.Models.Toode", b =>
-                {
-                    b.HasOne("veeb.Models.Kasutaja", null)
-                        .WithMany("Tooded")
-                        .HasForeignKey("KasutajaId");
-                });
-
-            modelBuilder.Entity("veeb.Models.Kasutaja", b =>
-                {
-                    b.Navigation("Tooded");
                 });
 #pragma warning restore 612, 618
         }

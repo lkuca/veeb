@@ -9,7 +9,7 @@
 
         // Foreign key to Kasutaja
         public int? KasutajaId { get; set; }
-        public Kasutaja Kasutaja { get; set; } // Navigation property
+        
 
         public Toode(int id, string name, double price, bool isActive)
         {
