@@ -1,25 +1,26 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace veeb.Models
 {
     public class Kasutaja
     {
-        public int Id { get; set; }
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]  // Это гарантирует, что поле будет автоинкрементируемым
+        public int KasutajaId { get; set; }
+
         public string Kasutajanimi { get; set; }
         public string Parool { get; set; }
         public string Eesnimi { get; set; }
         public string Perenimi { get; set; }
 
-        [JsonIgnore] // Исключает это поле из сериализации в JSON
-        public ICollection<Toode> Tooded { get; set; } = new List<Toode>();
+        // Не забудьте пометить внешний ключ CartId, если хотите привязать пользователя к корзине
+        public int? CartId { get; set; }
+        [JsonIgnore]
+        public Cart? Cart { get; set; }
 
-        public Kasutaja(int id, string kasutajanimi, string parool, string eesnimi, string perenimi)
-        {
-            Id = id;
-            Kasutajanimi = kasutajanimi;
-            Parool = parool;
-            Eesnimi = eesnimi;
-            Perenimi = perenimi;
-        }
+
     }
+
 }

@@ -22,7 +22,7 @@ namespace veeb.Controllers
         [HttpGet]
         public async Task<ActionResult<Kasutaja>> GetKasutaja()
         {
-            var kasutaja = await _dbContext.kasutajad.FirstOrDefaultAsync();
+            var kasutaja = await _dbContext.Kasutajad.FirstOrDefaultAsync();
             if (kasutaja == null)
             {
                 return NotFound("Kasutaja ei leitud.");
@@ -34,7 +34,7 @@ namespace veeb.Controllers
         [HttpPatch("muuda-nime")]
         public async Task<ActionResult<Kasutaja>> MuudaNime([FromQuery] int id, [FromQuery] string uusNimi)
         {
-            var kasutaja = await _dbContext.kasutajad.FindAsync(id);
+            var kasutaja = await _dbContext.Kasutajad.FindAsync(id);
             if (kasutaja == null)
             {
                 return NotFound("Kasutaja ei leitud.");
@@ -49,7 +49,7 @@ namespace veeb.Controllers
         [HttpPatch("muuda-parooli")]
         public async Task<ActionResult<Kasutaja>> MuudaParooli([FromQuery] int id, [FromQuery] string uusParool)
         {
-            var kasutaja = await _dbContext.kasutajad.FindAsync(id);
+            var kasutaja = await _dbContext.Kasutajad.FindAsync(id);
             if (kasutaja == null)
             {
                 return NotFound("Kasutaja ei leitud.");
@@ -64,7 +64,7 @@ namespace veeb.Controllers
         [HttpPatch("muuda-eesnime")]
         public async Task<ActionResult<Kasutaja>> MuudaEesnime([FromQuery] int id, [FromQuery] string uusEesnimi)
         {
-            var kasutaja = await _dbContext.kasutajad.FindAsync(id);
+            var kasutaja = await _dbContext.Kasutajad.FindAsync(id);
             if (kasutaja == null)
             {
                 return NotFound("Kasutaja ei leitud.");
@@ -79,7 +79,7 @@ namespace veeb.Controllers
         [HttpPatch("muuda-perenime")]
         public async Task<ActionResult<Kasutaja>> MuudaPerenime([FromQuery] int id, [FromQuery] string uusPerenimi)
         {
-            var kasutaja = await _dbContext.kasutajad.FindAsync(id);
+            var kasutaja = await _dbContext.Kasutajad.FindAsync(id);
             if (kasutaja == null)
             {
                 return NotFound("Kasutaja ei leitud.");

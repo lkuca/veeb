@@ -1,90 +1,135 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
 using veeb.Data;
 using veeb.Models;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
-namespace veeb.Controllers
+[ApiController]
+[Route("api/[controller]")]
+public class KasutajadController : ControllerBase
 {
-    [ApiController]
-    [Route("[controller]")]
-    public class KasutajadController : ControllerBase
+    private readonly ApplicationDbContext _context;
+
+    public KasutajadController(ApplicationDbContext context)
     {
-        private readonly ApplicationDbContext _dbContext;
+        _context = context;
+    }
 
-        public KasutajadController(ApplicationDbContext dbContext)
+    // Получить всех пользователей
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<Kasutaja>>> GetKasutajad()
+    {
+        return await _context.Kasutajad.Include(k => k.Cart).ThenInclude(c => c.Tooted).ToListAsync();
+    }
+
+    // Создать нового пользователя
+    [HttpPost]
+    public async Task<ActionResult<Kasutaja>> CreateKasutaja([FromBody] Kasutaja kasutajaDto)
+    {
+        // Создаем пользователя
+        var kasutaja = new Kasutaja
         {
-            _dbContext = dbContext;
+            Kasutajanimi = kasutajaDto.Kasutajanimi,
+            Parool = kasutajaDto.Parool,
+            Eesnimi = kasutajaDto.Eesnimi,
+            Perenimi = kasutajaDto.Perenimi
+        };
+
+        // Создаем корзину для пользователя
+        var cart = new Cart
+        {
+            Kasutaja = kasutaja  // Связываем корзину с пользователем
+        };
+
+        // Добавляем корзину и пользователя в контекст
+        _context.Kasutajad.Add(kasutaja);  // Сначала добавляем пользователя
+        _context.Carts.Add(cart);  // Затем добавляем корзину
+
+        // Сохраняем изменения в базе данных
+        await _context.SaveChangesAsync();
+
+        // Возвращаем только нужные данные, включая CartId
+        return CreatedAtAction(nameof(GetKasutajad), new { id = kasutaja.KasutajaId }, new
+        {
+            id = kasutaja.KasutajaId,
+            kasutajanimi = kasutaja.Kasutajanimi,
+            parool = kasutaja.Parool,
+            eesnimi = kasutaja.Eesnimi,
+            perenimi = kasutaja.Perenimi,
+            cartId = cart.CartId  // Возвращаем CartId
+        });
+    }
+
+    // Добавить товар в корзину пользователя
+    [HttpPost("{kasutajaId}/add-to-cart")]
+    public async Task<IActionResult> AddToCart(int kasutajaId, [FromBody] int toodeId)
+    {
+        var kasutaja = await _context.Kasutajad.Include(k => k.Cart).FirstOrDefaultAsync(k => k.KasutajaId == kasutajaId);
+        if (kasutaja == null) return NotFound("Kasutaja not found.");
+
+        var toode = await _context.Tooted.FindAsync(toodeId);
+        if (toode == null) return NotFound("Toode not found.");
+
+        if (kasutaja.Cart == null)
+        {
+            // Создать корзину, если её нет
+            kasutaja.Cart = new Cart { KasutajaId = kasutajaId };
+            _context.Carts.Add(kasutaja.Cart);
         }
 
-        // GET /kasutajad
-        [HttpGet]
-        public async Task<ActionResult<List<Kasutaja>>> Get()
+        toode.CartId = kasutaja.Cart.CartId;
+        await _context.SaveChangesAsync();
+
+        return Ok("Toode added to cart.");
+    }
+
+    // Получить корзину пользователя
+    [HttpGet("{kasutajaId}/cart")]
+    public async Task<ActionResult<Cart>> GetCart(int kasutajaId)
+    {
+        var cart = await _context.Carts
+            .Include(c => c.Tooted)
+            .FirstOrDefaultAsync(c => c.KasutajaId == kasutajaId);
+
+        if (cart == null) return NotFound("Cart not found.");
+        return cart;
+    }
+    [HttpPost("maksa/{cartId}")]
+    public async Task<ActionResult> PayForTooted(int cartId, [FromBody] decimal summa)
+    {
+        // Получаем корзину по ее ID
+        var cart = await _context.Carts
+            .Include(c => c.Tooted)  // Включаем продукты корзины
+            .FirstOrDefaultAsync(c => c.CartId == cartId);
+
+        if (cart == null)
         {
-            return await _dbContext.kasutajad.ToListAsync();
+            return NotFound("Корзина не найдена.");
         }
 
-        // GET /kasutajad/kustuta/1
-        [HttpDelete("kustuta/{id}")]
-        public async Task<ActionResult<List<Kasutaja>>> Delete(int id)
-        {
-            var kasutaja = await _dbContext.kasutajad.FindAsync(id);
-            if (kasutaja == null)
-            {
-                return NotFound("Kasutajat ei leitud.");
-            }
+        // Считаем общую сумму продуктов в корзине
+        var totalPrice = cart.Tooted.Sum(t => t.Price);
 
-            _dbContext.kasutajad.Remove(kasutaja);
-            await _dbContext.SaveChangesAsync();
-            return await _dbContext.kasutajad.ToListAsync();
+        // Проверяем, хватает ли средств
+        if (summa < totalPrice)
+        {
+            return BadRequest(new { message = "Недостаточно средств для оплаты." });
         }
 
-        // POST /kasutajad/lisa
-        [HttpPost("lisa")]
-        public async Task<ActionResult<List<Kasutaja>>> Add(Kasutaja newKasutaja)
+        // Переводим продукты пользователю и очищаем корзину
+        foreach (var toode in cart.Tooted)
         {
-            _dbContext.kasutajad.Add(newKasutaja);
-            await _dbContext.SaveChangesAsync();
-            return await _dbContext.kasutajad.ToListAsync();
+            // Связываем продукт с пользователем
+            toode.CartId = null;  // Продукт больше не привязан к корзине
+            _context.Tooted.Update(toode);
         }
 
-        // PUT /kasutajad/muuda-parooli/1
-        [HttpPut("muuda-parooli/{id}")]
-        public async Task<ActionResult<List<Kasutaja>>> MuudaParooli(int id, [FromBody] string uusParool)
-        {
-            var kasutaja = await _dbContext.kasutajad.FindAsync(id);
-            if (kasutaja == null)
-            {
-                return NotFound("Kasutajat ei leitud.");
-            }
+        // Очищаем корзину (оставляем, если хотите удалить ее из базы данных)
+        cart.Tooted.Clear();  // Очистка продуктов корзины
+        await _context.SaveChangesAsync();  // Сохраняем изменения
 
-            kasutaja.Parool = uusParool;
-            _dbContext.kasutajad.Update(kasutaja);
-            await _dbContext.SaveChangesAsync();
-            return await _dbContext.kasutajad.ToListAsync();
-        }
+        // Возвращаем ответ с суммой, потраченной на покупку
+        return Ok(new { message = "Оплата прошла успешно.", totalPaid = totalPrice });
 
-        // DELETE /kasutajad/kustuta-koik
-        [HttpDelete("kustuta-koik")]
-        public async Task<ActionResult<List<Kasutaja>>> DeleteAll()
-        {
-            _dbContext.kasutajad.RemoveRange(_dbContext.kasutajad);
-            await _dbContext.SaveChangesAsync();
-            return await _dbContext.kasutajad.ToListAsync();
-        }
-
-        // GET /kasutajad/1
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Kasutaja>> GetKasutajaById(int id)
-        {
-            var kasutaja = await _dbContext.kasutajad.FindAsync(id);
-            if (kasutaja == null)
-            {
-                return NotFound("Kasutajat ei leitud.");
-            }
-            return kasutaja;
-        }
     }
 }

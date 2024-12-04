@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using veeb.Data;
 
@@ -11,9 +12,11 @@ using veeb.Data;
 namespace veeb.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241204204139_ssd")]
+    partial class ssd
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -30,7 +33,7 @@ namespace veeb.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CartId"));
 
-                    b.Property<int>("KasutajaId")
+                    b.Property<int?>("KasutajaId")
                         .HasColumnType("int");
 
                     b.HasKey("CartId");
@@ -40,11 +43,11 @@ namespace veeb.Migrations
 
             modelBuilder.Entity("veeb.Models.Kasutaja", b =>
                 {
-                    b.Property<int>("KasutajaId")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("KasutajaId"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<int?>("CartId")
                         .HasColumnType("int");
@@ -65,7 +68,7 @@ namespace veeb.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("KasutajaId");
+                    b.HasKey("Id");
 
                     b.HasIndex("CartId")
                         .IsUnique()
@@ -89,8 +92,8 @@ namespace veeb.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<decimal>("Price")
-                        .HasColumnType("decimal(18,2)");
+                    b.Property<double>("Price")
+                        .HasColumnType("float");
 
                     b.Property<bool>("Quantity")
                         .HasColumnType("bit");
@@ -115,8 +118,9 @@ namespace veeb.Migrations
             modelBuilder.Entity("veeb.Models.Toode", b =>
                 {
                     b.HasOne("veeb.Models.Cart", "Cart")
-                        .WithMany("Tooted")
-                        .HasForeignKey("CartId");
+                        .WithMany("Products")
+                        .HasForeignKey("CartId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Cart");
                 });
@@ -125,7 +129,7 @@ namespace veeb.Migrations
                 {
                     b.Navigation("Kasutaja");
 
-                    b.Navigation("Tooted");
+                    b.Navigation("Products");
                 });
 #pragma warning restore 612, 618
         }
