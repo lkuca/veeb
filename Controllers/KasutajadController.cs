@@ -19,7 +19,13 @@ public class KasutajadController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Kasutaja>>> GetKasutajad()
     {
-        return await _context.Kasutajad.Include(k => k.Cart).ThenInclude(c => c.Tooted).ToListAsync();
+        var kasutajad = await _context.Kasutajad
+            .Include(k => k.Cart)  // Includes the Cart
+            .ThenInclude(c => c.Tooted)  // Includes products in the Cart
+            .Include(k => k.PurchasedProducts)  // Includes the PurchasedProducts
+            .ToListAsync();
+
+        return Ok(kasutajad);
     }
 
     // Создать нового пользователя
@@ -97,9 +103,10 @@ public class KasutajadController : ControllerBase
     [HttpPost("maksa/{cartId}")]
     public async Task<ActionResult> PayForTooted(int cartId, [FromBody] decimal summa)
     {
-        // Получаем корзину по ее ID
+        // Получаем корзину по её ID
         var cart = await _context.Carts
             .Include(c => c.Tooted)  // Включаем продукты корзины
+            .Include(c => c.Kasutaja)  // Включаем пользователя корзины
             .FirstOrDefaultAsync(c => c.CartId == cartId);
 
         if (cart == null)
@@ -116,20 +123,37 @@ public class KasutajadController : ControllerBase
             return BadRequest(new { message = "Недостаточно средств для оплаты." });
         }
 
+        var kasutaja = cart.Kasutaja;  // Получаем пользователя, связанного с корзиной
+
         // Переводим продукты пользователю и очищаем корзину
-        foreach (var toode in cart.Tooted)
+        foreach (var toode in cart.Tooted.ToList())  // Используем ToList() для предотвращения изменения коллекции во время итерации
         {
-            // Связываем продукт с пользователем
+            // Добавляем продукт в список покупок пользователя
+            if (kasutaja.PurchasedProducts == null)
+            {
+                kasutaja.PurchasedProducts = new List<Toode>();  // Инициализация списка, если его нет
+            }
+            kasutaja.PurchasedProducts.Add(toode);
+
+            // Убираем продукт из корзины
             toode.CartId = null;  // Продукт больше не привязан к корзине
+
+            // Обновляем продукт в контексте
             _context.Tooted.Update(toode);
         }
 
-        // Очищаем корзину (оставляем, если хотите удалить ее из базы данных)
+        // Очищаем корзину
         cart.Tooted.Clear();  // Очистка продуктов корзины
-        await _context.SaveChangesAsync();  // Сохраняем изменения
+        _context.Carts.Update(cart);  // Обновляем корзину
+
+        // Сохраняем изменения в базе данных
+        await _context.SaveChangesAsync();
 
         // Возвращаем ответ с суммой, потраченной на покупку
         return Ok(new { message = "Оплата прошла успешно.", totalPaid = totalPrice });
-
     }
+
+
+
+
 }

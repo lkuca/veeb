@@ -20,7 +20,7 @@ namespace veeb.Models
         [JsonIgnore]
         public Cart? Cart { get; set; }
 
-
+        public List<Toode> PurchasedProducts { get; set; } = new List<Toode>();
     }
 
 }
